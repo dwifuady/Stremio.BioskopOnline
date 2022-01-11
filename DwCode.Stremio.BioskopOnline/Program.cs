@@ -1,3 +1,5 @@
+using System.Net;
+
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
@@ -6,6 +8,9 @@ builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 builder.Services.AddScoped(hc => new HttpClient { BaseAddress = new Uri("https://v1-api.bioskoponline.com/") });
 builder.Services.AddCors();
+builder.WebHost.ConfigureKestrel(serverOptions => {
+    serverOptions.Listen(IPAddress.Any, Convert.ToInt32(Environment.GetEnvironmentVariable("PORT")));
+});
 
 var app = builder.Build();
 
