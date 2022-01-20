@@ -37,7 +37,7 @@ app.MapGet("/manifest.json", () =>
         (
             "com.stremio.bioskoponline.addon", 
             "0.0.2", 
-            "Bioskop Online Dev", 
+            "Bioskop Online", 
             "Search Indonesian movies that available on BioskopOnline", 
             new Catalog[]
             {
