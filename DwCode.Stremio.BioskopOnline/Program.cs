@@ -36,8 +36,8 @@ app.MapGet("/manifest.json", () =>
     return new Manifest
         (
             "com.stremio.bioskoponline.addon", 
-            "0.0.1", 
-            "Bioskop Online", 
+            "0.0.2", 
+            "Bioskop Online Dev", 
             "Search Indonesian movies that available on BioskopOnline", 
             new Catalog[]
             {
@@ -71,6 +71,11 @@ app.MapGet("/catalog/movie/bioskopOnlineMovies/{search}", async (string search, 
 
 app.MapGet("stream/movie/{id}", (string id) => 
 {
+    if (id.StartsWith("tt"))
+    {
+        return null;
+    };
+
     var streams = new List<Stream>
     {
         new Stream("Bioskop Online", $"{bioskopOnlineUrl}film/{id.Replace(".json", "")}")
@@ -80,6 +85,11 @@ app.MapGet("stream/movie/{id}", (string id) =>
 
 app.MapGet("meta/movie/{id}", async (string id, HttpClient http) =>
 {
+    if (id.StartsWith("tt"))
+    {
+        return null;
+    }
+
     var response = await http.GetFromJsonAsync<RootDetail>($"video/title?hashed_id={id.Replace(".json", "")}");
     if (response?.Code == 200)
     {
