@@ -1,0 +1,25 @@
+.bg-blue-1 {
+    background-color: rgba(1, 18, 40, 1);
+}
+
+.button-install {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding-top: 0.75rem;
+    padding-bottom: 0.75rem;
+    background-color: rgba(155, 199, 253, 1);
+    color: rgba(1, 18, 40, 1);
+    width: 92px;
+    height: 36px;
+    text-decoration: none;
+    border-radius: 50px;
+    font-weight: 600;
+}
+
+.center {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 90vh;
+}

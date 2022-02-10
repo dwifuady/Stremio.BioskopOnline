@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stremio - Bioskop Online</title>
+    <link rel="stylesheet" href="./css/site.css">
+</head>
+<body class="bg-blue-1">
+    <div class="center">
+        <a id="installLink" class="button-install">
+            Install
+         </a>
+    </div>
+</body>
+<script>
+    document.getElementById("installLink").href = `stremio://${window.location.host}/manifest.json`;
+</script>
+</html>
