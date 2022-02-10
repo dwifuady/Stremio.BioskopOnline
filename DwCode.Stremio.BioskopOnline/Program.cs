@@ -29,6 +29,9 @@ builder
 
 app.UseHttpsRedirection();
 
+app.UseDefaultFiles();
+app.UseStaticFiles();
+
 const string bioskopOnlineUrl = "https://bioskoponline.com/";
 
 app.MapGet("/manifest.json", () => 
@@ -36,7 +39,7 @@ app.MapGet("/manifest.json", () =>
     return new Manifest
         (
             "com.stremio.bioskoponline.addon", 
-            "0.0.2", 
+            "1.0.0", 
             "Bioskop Online", 
             "Search Indonesian movies that available on BioskopOnline", 
             new Catalog[]
