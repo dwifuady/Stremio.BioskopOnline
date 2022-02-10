@@ -27,7 +27,7 @@ builder
     .AllowAnyMethod()
 );
 
-// app.UseHttpsRedirection();
+app.UseHttpsRedirection();
 
 const string bioskopOnlineUrl = "https://bioskoponline.com/";
 
@@ -91,9 +91,10 @@ app.MapGet("meta/movie/{id}", async (string id, HttpClient http) =>
     }
 
     var response = await http.GetFromJsonAsync<RootDetail>($"video/title?hashed_id={id.Replace(".json", "")}");
-    if (response?.Code == 200)
+    if (response?.Code == 200 && response?.Data is not null)
     {
-        var data = response?.Data;
+        var data = response.Data;
+
         var meta = new Meta(data.Hashed_id, "movie", data.Name, data.Images.Portrait, data.Description);
 
         return new { meta = meta };
@@ -105,25 +106,16 @@ app.Run();
 
 #region Stremio
 record Manifest(string Id, string Version, string Name, string Description, Catalog[] Catalogs, Object[] Resources, string[] Types);
-
 record Catalog(string Type, string Id, string Name, Extra[] Extra, string[] ExtraSupported);
-
 record Extra(string Name, bool IsRequired);
-
 record Stream(string Title, string ExternalUrl);
-
 record SearchResult(IEnumerable<Meta> metas);
-
 record Meta(string Id, string Type, string Name, string Poster, string Description);
 #endregion
 
 #region BioskopOnline
-
 record Root(int Code, string Message, Data[] Data);
 record RootDetail(int Code, string Message, Data Data);
-
 record Data(string Hashed_id, string Name, Images Images, string Description);
-
 record Images(string Thumbnail, string Portrait, string Thumbnail_Portrait);
-
 #endregion
