@@ -33,6 +33,7 @@ app.UseDefaultFiles();
 app.UseStaticFiles();
 
 const string bioskopOnlineUrl = "https://bioskoponline.com/";
+const string addonsName = "Bioskop Online";
 
 app.MapGet("/manifest.json", () => 
 {
@@ -40,7 +41,7 @@ app.MapGet("/manifest.json", () =>
         (
             "com.stremio.bioskoponline.addon", 
             "1.0.0", 
-            "Bioskop Online", 
+            addonsName, 
             "Search Indonesian movies that available on BioskopOnline", 
             new Catalog[]
             {
@@ -64,7 +65,7 @@ app.MapGet("/catalog/movie/bioskopOnlineMovies/{search}", async (string search, 
     {
         foreach (var data in response.Data)
         {
-            var meta = new Meta(data.Hashed_id, "movie", data.Name, data.Images?.Portrait ?? "", "");
+            var meta = new Meta(data.Hashed_id, "movie", data.Name, data.Images?.Portrait ?? "", "", data.Images?.Spotlight ?? "");
             metas.Add(meta);
         }
     }
@@ -72,18 +73,24 @@ app.MapGet("/catalog/movie/bioskopOnlineMovies/{search}", async (string search, 
     return new SearchResult(metas);
 });
 
-app.MapGet("stream/movie/{id}", (string id) => 
+app.MapGet("stream/movie/{id}", async (string id, HttpClient http) => 
 {
     if (id.StartsWith("tt"))
     {
         return null;
     };
 
+    var response = await http.GetFromJsonAsync<RootDetail>($"video/title?hashed_id={id.Replace(".json", "")}");
+    if (response?.Code == 200 && response?.Data is not null)
+    {   
+
+    }
+
     var streams = new List<Stream>
     {
-        new Stream("Bioskop Online", $"{bioskopOnlineUrl}film/{id.Replace(".json", "")}")
+        new Stream("Bioskop Online", $"{bioskopOnlineUrl}film/{id.Replace(".json", "")}", addonsName)
     };
-    return new { streams = streams };
+    return new { streams };
 });
 
 app.MapGet("meta/movie/{id}", async (string id, HttpClient http) =>
@@ -97,12 +104,11 @@ app.MapGet("meta/movie/{id}", async (string id, HttpClient http) =>
     if (response?.Code == 200 && response?.Data is not null)
     {
         var data = response.Data;
+        var meta = new Meta(data.Hashed_id, "movie", data.Name, data.Images.Portrait, data.Description, data.Images.Spotlight);
 
-        var meta = new Meta(data.Hashed_id, "movie", data.Name, data.Images.Portrait, data.Description);
-
-        return new { meta = meta };
+        return new { meta };
     }
-    return new { meta = new Meta(id.Replace(".json",""), "movie", "", "", "")};
+    return new { meta = new Meta(id.Replace(".json",""), "movie", "", "", "", "")};
 });
 
 app.Run();
@@ -111,14 +117,14 @@ app.Run();
 record Manifest(string Id, string Version, string Name, string Description, Catalog[] Catalogs, Object[] Resources, string[] Types);
 record Catalog(string Type, string Id, string Name, Extra[] Extra, string[] ExtraSupported);
 record Extra(string Name, bool IsRequired);
-record Stream(string Title, string ExternalUrl);
+record Stream(string Title, string ExternalUrl, string Name);
 record SearchResult(IEnumerable<Meta> metas);
-record Meta(string Id, string Type, string Name, string Poster, string Description);
+record Meta(string Id, string Type, string Name, string Poster, string Description, string Background);
 #endregion
 
 #region BioskopOnline
 record Root(int Code, string Message, Data[] Data);
 record RootDetail(int Code, string Message, Data Data);
 record Data(string Hashed_id, string Name, Images Images, string Description);
-record Images(string Thumbnail, string Portrait, string Thumbnail_Portrait);
+record Images(string Thumbnail, string Portrait, string Thumbnail_Portrait, string Spotlight);
 #endregion
