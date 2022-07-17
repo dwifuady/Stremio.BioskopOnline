@@ -1,5 +1,3 @@
-using System.Net;
-
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
@@ -10,7 +8,7 @@ builder.Services.AddScoped(hc => new HttpClient { BaseAddress = new Uri("https:/
 builder.Services.AddCors();
 builder.WebHost.ConfigureKestrel(serverOptions =>
 {
-    serverOptions.Listen(IPAddress.Any, Convert.ToInt32(Environment.GetEnvironmentVariable("PORT")));
+    serverOptions.ListenAnyIP(Convert.ToInt32(Environment.GetEnvironmentVariable("PORT")));
 });
 
 var app = builder.Build();
@@ -21,14 +19,13 @@ if (app.Environment.IsDevelopment())
     app.UseSwagger();
     app.UseSwaggerUI();
 }
-app.UseCors(builder =>
-builder
-    .AllowAnyOrigin()
-    .AllowAnyHeader()
-    .AllowAnyMethod()
-);
 
-app.UseHttpsRedirection();
+app.UseCors(corsPolicyBuilder => 
+    corsPolicyBuilder
+        .AllowAnyOrigin()
+        .AllowAnyHeader()
+        .AllowAnyMethod()
+);
 
 app.UseDefaultFiles();
 app.UseStaticFiles();
@@ -37,25 +34,22 @@ const string bioskopOnlineUrl = "https://bioskoponline.com/";
 const string addonsName = "Bioskop Online";
 const string metaTypeMovie = "movie";
 
-app.MapGet("/manifest.json", () =>
-{
-    return new Manifest
-        (
-            "com.stremio.bioskoponline.addon",
-            "1.1.1",
-            addonsName,
-            "Search Indonesian movies that available on BioskopOnline",
-            new List<Catalog>
-            {
-                new Catalog("movie", "bioskopOnlineMovies", "Bioskop Online Movies", new List<Extra> { new Extra("search", true) }, new List<string> {"search"})
-            },
-            new List<string>
-            {
-                "catalog", "meta", "stream"
-            },
-            new List<string> { metaTypeMovie }
-        );
-});
+app.MapGet("/manifest.json", () => new Manifest
+(
+    "com.stremio.bioskoponline.addon",
+    "1.1.2",
+    addonsName,
+    "Search Indonesian movies that available on BioskopOnline",
+    new List<Catalog>
+    {
+        new Catalog("movie", "bioskopOnlineMovies", "Bioskop Online Movies", new List<Extra> { new Extra("search", true) }, new List<string> {"search"})
+    },
+    new List<string>
+    {
+        "catalog", "meta", "stream"
+    },
+    new List<string> { metaTypeMovie }
+));
 
 app.MapGet("/catalog/movie/bioskopOnlineMovies/{search}", async (string search, HttpClient http) =>
 {
@@ -63,19 +57,17 @@ app.MapGet("/catalog/movie/bioskopOnlineMovies/{search}", async (string search, 
     var response = await http.GetFromJsonAsync<Root>($"video/searchAll?keyword={keyword.Split('.')[0]}");
 
     var metas = new List<Meta>();
-    if (response?.Code == 200)
+    if (response?.Code != 200) return new SearchResult(metas);
+    foreach (var data in response.Data)
     {
-        foreach (var data in response.Data)
-        {
-            var meta = new Meta(data.Hashed_id
-                , metaTypeMovie
-                , data.Name
-                , data.Images?.Portrait ?? ""
-                , ""
-                , data.Images?.Spotlight ?? ""
-                );
-            metas.Add(meta);
-        }
+        var meta = new Meta(data.Hashed_id
+            , metaTypeMovie
+            , data.Name
+            , data.Images?.Portrait ?? ""
+            , ""
+            , data.Images?.Spotlight ?? ""
+        );
+        metas.Add(meta);
     }
 
     return new SearchResult(metas);
@@ -89,7 +81,7 @@ app.MapGet("stream/movie/{id}", async (string id, HttpClient http) =>
     };
     
     var response = await http.GetFromJsonAsync<RootDetail>($"video/title?hashed_id={id.Split('.')[0]}");
-    string title = "";
+    var title = "";
     if (response?.Code == 200 && response?.Data is not null)
     {
         title = response.Data.Name;
@@ -99,7 +91,7 @@ app.MapGet("stream/movie/{id}", async (string id, HttpClient http) =>
 
     var streams = new List<Stream>
     {
-        new Stream(title , $"{bioskopOnlineUrl}film/{id.Split('.')[0]}", addonsName)
+        new(title , $"{bioskopOnlineUrl}film/{id.Split('.')[0]}", addonsName)
     };
     return new { streams };
 });
@@ -112,52 +104,44 @@ app.MapGet("meta/movie/{id}", async (string id, HttpClient http) =>
     }
 
     var response = await http.GetFromJsonAsync<RootDetail>($"video/title?hashed_id={id.Split('.')[0]}");
-    if (response?.Code == 200 && response?.Data is not null)
-    {
-        var data = response.Data;
-        var persons = data.Persons;
-        var genres = data.Genres;
-
-        List<string> cast = new();
-        List<string> writer = new();
-        List<string> director = new();
-
-        if (persons is not null)
+    if (response?.Code != 200 || response?.Data is null)
+        return new
         {
-            cast.AddRange(persons.Where(p => p.Type == PersonType.Cast.ToString()).Select(p => p.Name));
-            writer.AddRange(persons.Where(p => p.Type == PersonType.Writer.ToString()).Select(p => p.Name));
-            director.AddRange(persons.Where(p => p.Type == PersonType.Director.ToString()).Select(p => p.Name));
-        }
+            meta = new Meta(id.Split('.')[0]
+                , metaTypeMovie
+                , ""
+            )
+        };
+    var data = response.Data;
+    var persons = data.Persons;
+    var genres = data.Genres;
 
-        List<string> genre = new();
-        if (genres is not null)
-        {
-            genre.AddRange(genres.Select(x => x.Name));
-        }
+    List<string> cast = new();
+    List<string> writer = new();
+    List<string> director = new();
 
-        var meta = new Meta(data.Hashed_id
-            , metaTypeMovie
-            , data.Name
-            , data.Images.Portrait
-            , data.Description
-            , data.Images.Spotlight
-            , $"{data.Movies.Duration} min"
-            , $"{data.Movies.Release.Year}"
-            , cast
-            , writer
-            , director
-            , genre
-            );
+    cast.AddRange(persons.Where(p => p.Type == PersonType.Cast.ToString()).Select(p => p.Name));
+    writer.AddRange(persons.Where(p => p.Type == PersonType.Writer.ToString()).Select(p => p.Name));
+    director.AddRange(persons.Where(p => p.Type == PersonType.Director.ToString()).Select(p => p.Name));
 
-        return new { meta };
-    }
-    return new
-    {
-        meta = new Meta(id.Split('.')[0]
+    List<string> genre = new();
+    genre.AddRange(genres.Select(x => x.Name));
+
+    var meta = new Meta(data.Hashed_id
         , metaTypeMovie
-        , ""
-        )
-    };
+        , data.Name
+        , data.Images.Portrait
+        , data.Description
+        , data.Images.Spotlight
+        , $"{data.Movies.Duration} min"
+        , $"{data.Movies.Release.Year}"
+        , cast
+        , writer
+        , director
+        , genre
+    );
+
+    return new { meta };
 });
 
 app.Run();
